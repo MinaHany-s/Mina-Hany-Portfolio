@@ -82,8 +82,7 @@ function Navigation({ language, setLanguage, copy, profile }) {
     };
   }, [language]);
   return <header className="site-nav">
-    <a href="#home" className="wordmark" aria-label={`${profile.name}, ${copy.nav[0][1]}`} onClick={() => setOpen(false)}>MH<span>—</span></a>
-    <button className="nav-toggle" type="button" onClick={() => setOpen(!open)} aria-label={open ? copy.controls.closeMenu : copy.controls.openMenu} aria-expanded={open} aria-controls="primary-navigation">{open ? <X /> : <Menu />}</button>
+    <a href="#home" className="wordmark" aria-label={`${profile.name}, ${copy.nav[0][1]}`} onClick={() => setOpen(false)}><img src="/assets/mina-hany-mark.svg" alt="" /><span className="wordmark-label">MINA HANY</span></a>
     <nav id="primary-navigation" aria-label={copy.controls.navigation} className={open ? 'nav-list nav-list-open' : 'nav-list'}>
       {copy.nav.map(([id, label], index) => <a
         className={active === id ? 'is-active' : ''}
@@ -92,9 +91,10 @@ function Navigation({ language, setLanguage, copy, profile }) {
         key={id}
         onClick={() => { setOpen(false); setActive(id); }}
       ><span dir="ltr">{String(index + 1).padStart(2, '0')}</span>{label}</a>)}
-      <LanguageSwitcher language={language} setLanguage={(value) => { setLanguage(value); setOpen(false); }} copy={copy} />
     </nav>
+    <LanguageSwitcher language={language} setLanguage={(value) => { setLanguage(value); setOpen(false); }} copy={copy} />
     <a href={profile.github} className="nav-github" target="_blank" rel="noreferrer" dir="ltr">GITHUB <ArrowUpRight size={14} /></a>
+    <button className="nav-toggle" type="button" onClick={() => setOpen(!open)} aria-label={open ? copy.controls.closeMenu : copy.controls.openMenu} aria-expanded={open} aria-controls="primary-navigation">{open ? <X /> : <Menu />}</button>
   </header>;
 }
 
@@ -488,7 +488,7 @@ function Contact({ copy, profile }) {
 }
 
 function Footer({ copy, profile }) {
-  return <footer className="footer wrap"><a href="#home" className="footer-mark">MINA HANY<span>—</span></a><span className="mono">{copy.footer.role}</span><a href={profile.github} target="_blank" rel="noreferrer" className="mono" dir="ltr">GITHUB ↗</a></footer>;
+  return <footer className="footer wrap"><a href="#home" className="footer-mark"><img src="/assets/mina-hany-mark.svg" alt="" />MINA HANY<span>—</span></a><span className="mono">{copy.footer.role}</span><a href={profile.github} target="_blank" rel="noreferrer" className="mono" dir="ltr">GITHUB ↗</a></footer>;
 }
 
 export default function App() {
