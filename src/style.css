@@ -366,7 +366,7 @@ html[dir=rtl] .architecture-detail-title h3{line-height:1.2;letter-spacing:0}
 .competitive-kicker{display:block;color:#a7b8ff;margin-bottom:10px;font-size:8px}
 .competitive-qualification h3{font:600 clamp(17px,2vw,24px)/1.35 var(--display);max-width:26ch;margin:0 0 9px}
 .competitive-qualification p{font-size:13px;font-weight:600;color:#a7b8ff;margin:0}
-.competitive-highlights{list-style:none;padding:0;margin:0;align-self:stretch}
+.competitive-highlights{list-style:none;padding:0;padding-inline-start:28px;margin:0;align-self:stretch}
 .competitive-highlights li{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;gap:12px;min-height:54px;border-bottom:1px solid #ffffff26;padding:10px 0}
 .competitive-highlights li:last-child{border-bottom:0}
 .competitive-highlights li>.mono{font-size:8px;color:#f07a56}
@@ -427,6 +427,7 @@ html[dir=rtl] .competitive-lightbox-controls b{font-family:var(--mono)}
   .competitive-story p{font-size:14px;line-height:1.8}
   .competitive-experience{grid-template-columns:1fr}
   .competitive-qualification{grid-template-columns:48px minmax(0,1fr);gap:14px;padding:21px 0;border-inline-end:0;border-bottom:1px solid #ffffff35}
+  .competitive-highlights{padding-inline-start:0}
   .competitive-stamp{width:44px;height:44px;font-size:8px}
   .competitive-qualification h3{font-size:19px}
   .competitive-highlights li{min-height:48px}
