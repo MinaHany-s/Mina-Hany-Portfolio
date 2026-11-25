@@ -1,5 +1,6 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Github, Linkedin, Mail, Menu, X } from 'lucide-react';
+import { useForm, ValidationError } from '@formspree/react';
 import { competitivePhotos, profile, projects, stackGroups } from './data/content.js';
 import { translations } from './data/translations.js';
 
@@ -30,17 +31,26 @@ function useMotion(rtl) {
 }
 
 function Progress({ rtl }) {
-  const [value, setValue] = useState(0);
+  const progressRef = useRef(null);
   useEffect(() => {
     const update = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      setValue(max > 0 ? window.scrollY / max : 0);
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = max > 0 ? window.scrollY / max : 0;
+        progressRef.current?.style.setProperty('transform', `scaleX(${progress})`);
+      });
     };
+    let frame = 0;
     window.addEventListener('scroll', update, { passive: true });
     update();
-    return () => window.removeEventListener('scroll', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, []);
-  return <div className="reading-progress" style={{ transform: `scaleX(${value})`, transformOrigin: rtl ? 'right' : 'left' }} />;
+  return <div ref={progressRef} className="reading-progress" style={{ transformOrigin: rtl ? 'right' : 'left' }} />;
 }
 
 function LanguageSwitcher({ language, setLanguage, copy }) {
@@ -65,12 +75,15 @@ function Navigation({ language, setLanguage, copy, profile }) {
       const line = document.querySelector('.site-nav')?.getBoundingClientRect().bottom + 48 || 120;
       const atBottom = Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 2;
       const current = (atBottom ? sections.at(-1) : sections.filter((section) => section.getBoundingClientRect().top <= line).at(-1)) || sections[0];
-      if (current) setActive(current.id);
+      if (current) setActive((previous) => previous === current.id ? previous : current.id);
     };
     let frame = 0;
     const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(update);
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        update();
+      });
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
@@ -99,11 +112,11 @@ function Navigation({ language, setLanguage, copy, profile }) {
 }
 
 function Hero({ copy }) {
-  return <section id="home" className="hero wrap">
+  return <section id="home" className="hero">
     <div className="hero-index mono"><span>{copy.hero.index}</span><span dir="ltr">{copy.hero.location}</span></div>
     <div className="hero-grid">
       <div className="hero-copy">
-        <div className="identity-line"><span className="identity-dot" /><span className="hero-name">MINA HANY</span><span className="mono">{copy.hero.role}</span></div>
+        <div className="identity-line"><span className="identity-dot" aria-hidden="true" /><span className="hero-name">{copy.hero.name}</span><span className="hero-role mono">{copy.hero.role}</span></div>
         <h1>{copy.hero.title.map((line, index) => <React.Fragment key={line}>{index > 0 && <br />}{index === 1 ? <span>{line}</span> : line}{index === copy.hero.title.length - 1 && <span className="blue-period">.</span>}</React.Fragment>)}</h1>
         <p className="hero-lede">{copy.hero.intro}</p>
         <div className="hero-links"><a href="#projects" className="link-primary">{copy.hero.work}<ArrowDown size={16} /></a><a href="#contact" className="link-secondary">{copy.hero.conversation}<ArrowUpRight size={15} /></a></div>
@@ -111,7 +124,13 @@ function Hero({ copy }) {
       </div>
       <div className="hero-art" data-parallax>
         <span className="hero-art-label mono">{copy.hero.artLabel}</span>
-        <Suspense fallback={<div className="network-still" aria-hidden="true" />}><HeroScene /></Suspense>
+        <span className="hero-art-instruction mono">{copy.hero.dragHint}</span>
+        <Suspense fallback={<div className="hero-scene-placeholder" aria-hidden="true" />}><HeroScene
+          label={copy.hero.sceneLabel}
+          stages={copy.hero.stages}
+          stageLabel={copy.hero.stageLabel}
+          stageStatus={copy.hero.stageStatus}
+        /></Suspense>
         <span className="hero-art-caption mono" dir="ltr">{copy.hero.artCaption}</span>
       </div>
     </div>
@@ -177,7 +196,6 @@ function Stack({ language, copy }) {
     const first = stackGroups.find((group) => group.id === category)?.items[0];
     if (first) setSelected(first.name);
   }, [category]);
-  const translatedProjects = useMemo(() => copy.githubSection.repositories, [copy]);
   return <section id="stack" className="stack-section wrap">
     <Chapter number="04" {...copy.chapters.stack} />
     <div className="stack-explorer" data-reveal>
@@ -210,7 +228,7 @@ function Stack({ language, copy }) {
         <h3 dir="ltr">{currentTech?.name}<span>.</span></h3>
         <p>{copy.stack.descriptions[currentTech?.name] || currentTech?.description}</p>
         <div className="stack-projects"><span className="mono">{copy.stack.projects}</span><div>{currentTech?.projects.map((project) => {
-          const label = translatedProjects.find((entry) => entry.name.toLowerCase().includes(project.id === 'quiz-app' ? 'quiz' : project.id))?.name || project.name;
+          const label = copy.githubSection.repositories.find((entry) => entry.name.toLowerCase().includes(project.id === 'quiz-app' ? 'quiz' : project.id))?.name || project.name;
           return <a href={`#${project.id}`} key={project.id}>{label}<ArrowUpRight size={13} aria-hidden="true" /></a>;
         })}</div></div>
       </aside>
@@ -224,8 +242,8 @@ function ScreenCapture({ project, projectCopy, linkCopy }) {
   return <figure className={`capture capture-${project.id}`} data-reveal>
     <div className="capture-chrome"><span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span><span className="capture-url mono" dir="ltr">{project.live.replace('https://', '').replace(/\/$/, '')}</span><span className="capture-live mono">{linkCopy.capture}</span></div>
     <div className="capture-stage">
-      <img className="capture-desktop" src={project.desktopImage} alt={`${project.name} ${linkCopy.desktopAlt}`} loading="lazy" />
-      <div className="capture-phone"><img src={project.mobileImage} alt={`${project.name} ${linkCopy.mobileAlt}`} loading="lazy" /></div>
+      <img className="capture-desktop" src={project.desktopImage} alt={`${project.name} ${linkCopy.desktopAlt}`} loading="lazy" decoding="async" />
+      <div className="capture-phone"><img src={project.mobileImage} alt={`${project.name} ${linkCopy.mobileAlt}`} loading="lazy" decoding="async" /></div>
     </div>
     <figcaption className="capture-caption mono"><span>{projectCopy.screenshotLabel}</span><span>{projectCopy.screenshotNote}</span></figcaption>
   </figure>;
@@ -259,7 +277,7 @@ function NotelyDeepDive({ copy }) {
   </div>;
 }
 
-function ProjectCase({ project, language, copy }) {
+function ProjectCase({ project, copy }) {
   const projectCopy = copy.projects[project.id];
   const linkCopy = copy.notelyLinks;
   return <article className={`case-study case-${project.id}`} id={project.id}>
@@ -444,23 +462,22 @@ function GitHubSection({ copy, profile }) {
   </section>;
 }
 
+function ContactForm({ copy }) {
+  const [state, handleSubmit] = useForm('xnpdwowv');
+  return <form className="contact-form" onSubmit={handleSubmit} aria-busy={state.submitting}>
+    <label>{copy.contact.name}<input type="text" name="name" autoComplete="name" required /><ValidationError className="contact-field-error" field="name" errors={state.errors} /></label>
+    <label>{copy.contact.email}<input type="email" name="email" autoComplete="email" required /><ValidationError className="contact-field-error" field="email" errors={state.errors} /></label>
+    <label className="contact-field-wide">{copy.contact.subject}<input type="text" name="subject" /><ValidationError className="contact-field-error" field="subject" errors={state.errors} /></label>
+    <label className="contact-field-wide">{copy.contact.message}<textarea name="message" rows="5" required /><ValidationError className="contact-field-error" field="message" errors={state.errors} /></label>
+    <button className="contact-submit contact-field-wide" type="submit" disabled={state.submitting}>
+      {state.submitting ? copy.contact.sending : copy.contact.submit}<ArrowUpRight size={16} aria-hidden="true" />
+    </button>
+    {state.succeeded && <p className="contact-status contact-field-wide" role="status">{copy.contact.success}</p>}
+    {state.errors && !state.succeeded && <p className="contact-status contact-field-wide" role="alert">{copy.contact.error}</p>}
+  </form>;
+}
+
 function Contact({ copy, profile }) {
-  const [status, setStatus] = useState('');
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) return;
-    const values = new FormData(form);
-    const subject = encodeURIComponent(`Portfolio message from ${values.get('name')}`);
-    const body = encodeURIComponent(`Name: ${values.get('name')}\nEmail: ${values.get('email')}\n\n${values.get('message')}`);
-    setStatus('opening');
-    try {
-      window.location.href = `mailto:${profile.email}?subject=${subject}&body=${body}`;
-      setStatus('handoff');
-    } catch {
-      setStatus('error');
-    }
-  };
   return <section id="contact" className="contact-section">
     <div className="wrap contact-inner">
       <div className="contact-top mono"><span>{copy.contact.eyebrow}</span><span>{copy.contact.identity}</span></div>
@@ -473,13 +490,7 @@ function Contact({ copy, profile }) {
         </div>
       </div>
       <div className="contact-form-wrap" data-reveal>
-        <form className="contact-form" onSubmit={handleSubmit}>
-          <label>{copy.contact.name}<input name="name" autoComplete="name" placeholder={copy.contact.namePlaceholder} required minLength="2" /></label>
-          <label>{copy.contact.email}<input name="email" type="email" autoComplete="email" placeholder={copy.contact.emailPlaceholder} required /></label>
-          <label className="contact-message">{copy.contact.message}<textarea name="message" rows="4" placeholder={copy.contact.messagePlaceholder} required minLength="8" /></label>
-          <div className="contact-submit-row"><button type="submit" className="contact-submit" disabled={status === 'opening'}>{status === 'opening' ? copy.contact.sending : copy.contact.submit}<ArrowUpRight size={16} /></button><p className="contact-form-help">{copy.contact.emailHelp}</p></div>
-          <p className={`contact-status ${status ? `is-${status}` : ''}`} role="status" aria-live="polite">{status === 'handoff' ? copy.contact.handoff : status === 'error' ? copy.contact.submitError : status === 'opening' ? copy.contact.sending : ''}</p>
-        </form>
+        <ContactForm copy={copy} />
         <a className="cv-note" href={`mailto:${profile.email}?subject=${encodeURIComponent('CV request')}`}><Mail size={15} />{copy.contact.cv}<ArrowUpRight size={14} /></a>
       </div>
       <div className="contact-bottom mono"><span>{copy.contact.footerMotto}</span><a href="#home">{copy.contact.backTop}</a><span>© 2026</span></div>
